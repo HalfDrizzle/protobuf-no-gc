@@ -225,6 +225,9 @@ namespace Google.Protobuf
         // The API wouldn't change anyway - just the implementation - so this work can be deferred.
         private readonly Func<T> factory;
 
+
+        public static IObjectPool<T> pool;
+
         /// <summary>
         /// Creates a new parser.
         /// </summary>
@@ -248,7 +251,10 @@ namespace Google.Protobuf
         /// <returns>An empty message.</returns>
         internal new T CreateTemplate()
         {
-            return factory();
+            if (pool != null)
+                return pool.Get();
+            else
+                return factory();
         }
 
         /// <summary>
@@ -321,6 +327,20 @@ namespace Google.Protobuf
         /// <returns>The parsed message.</returns>
         [SecuritySafeCritical]
         public new T ParseFrom(ReadOnlySpan<byte> data)
+        {
+            T message = factory();
+            message.MergeFrom(data, DiscardUnknownFields, Extensions);
+            return message;
+        }
+
+
+        /// <summary>
+        /// Parses a message from the given span.
+        /// </summary>
+        /// <param name="data">The data to parse.</param>
+        /// <returns>The parsed message.</returns>
+        [SecuritySafeCritical]
+        public new T ParseFromPool(ReadOnlySpan<byte> data)
         {
             T message = factory();
             message.MergeFrom(data, DiscardUnknownFields, Extensions);

@@ -112,6 +112,7 @@ void MessageGenerator::Generate(io::Printer* printer) {
   }
   printer->Print("#if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE\n");
   printer->Print("    , pb::IBufferMessage\n");
+  printer->Print("    , pb::IPoolItem\n");
   printer->Print("#endif\n");
   printer->Print("{\n");
   printer->Indent();
@@ -119,10 +120,12 @@ void MessageGenerator::Generate(io::Printer* printer) {
   // All static fields and properties
   printer->Print(
       vars,
-      "private static readonly pb::MessageParser<$class_name$> _parser = new "
-      "pb::MessageParser<$class_name$>(() => new $class_name$());\n");
-
-  printer->Print("private pb::UnknownFieldSet _unknownFields;\n");
+      "private static readonly pb::MessageParser<$class_name$> _parser = new pb::MessageParser<$class_name$>(() => new $class_name$());\n");
+  printer->Print(
+        vars,
+        "public static readonly pb::MessageObjectPool<$class_name$> ObjectPool = new();\n");
+  printer->Print(
+      "private pb::UnknownFieldSet _unknownFields;\n");
 
   if (has_extension_ranges_) {
     if (IsDescriptorProto(descriptor_->file())) {
@@ -150,9 +153,9 @@ void MessageGenerator::Generate(io::Printer* printer) {
 
   WriteGeneratedCodeAttributes(printer);
 
-  printer->Print(vars,
-                 "public static pb::MessageParser<$class_name$> Parser { get { "
-                 "return _parser; } }\n\n");
+  printer->Print(
+      vars,
+      "public static pb::MessageParser<$class_name$> Parser { get { if(pb::MessageParser<$class_name$>.pool == null) pb::MessageParser<$class_name$>.pool = ObjectPool; return _parser; } }\n\n");
 
   // Access the message descriptor via the relevant file descriptor or
   // containing message descriptor.
@@ -186,6 +189,61 @@ void MessageGenerator::Generate(io::Printer* printer) {
                  "  OnConstruction();\n"
                  "}\n\n"
                  "partial void OnConstruction();\n\n");
+
+    printer->Print("public void Clear()\n{\n");
+    for (int i = 0; i < descriptor_->field_count(); i++)
+    {
+        const FieldDescriptor* fieldDescriptor = descriptor_->field(i);
+        std::string fieldName = UnderscoresToCamelCase(fieldDescriptor->name(), false);
+        if (fieldDescriptor->is_repeated())
+        {
+            printer->Print(" if($field_name$_ != null)$field_name$_.Clear();\n", "field_name", fieldName);
+        } else if (fieldDescriptor->type() == FieldDescriptor::Type::TYPE_MESSAGE || fieldDescriptor->type() == FieldDescriptor::Type::TYPE_BYTES)
+        {
+            printer->Print(" if($field_name$_ != null){\n"
+                           "    $field_name$_.Clear();\n"
+                           "    $field_name$_ = null;\n"
+                           "}\n", "field_name", fieldName);
+        }
+        else if (fieldDescriptor->type() == FieldDescriptor::Type::TYPE_ENUM)
+        {
+            printer->Print(
+                    " $field_name$_ = $field_type$.$default_value$;\n", "field_type", GetClassName(fieldDescriptor->enum_type()), "field_name", fieldName, "default_value", fieldDescriptor->default_value_enum()->name());
+        }
+        else if (fieldDescriptor->type() == FieldDescriptor::Type::TYPE_STRING)
+        {
+            printer->Print(
+                    " $field_name$_ = $default_value$;\n", "field_name", fieldName, "default_value", "\"\"");
+        }
+        else
+        {
+            printer->Print(
+                    " $field_name$_ = $default_value$;\n", "field_name", fieldName, "default_value", "default");
+        }
+    }
+    printer->Print("}\n");
+
+
+    printer->Print("public void Recycle()\n{\n");
+    for (int i = 0; i < descriptor_->field_count(); i++)
+    {
+        const FieldDescriptor* fieldDescriptor = descriptor_->field(i);
+        std::string fieldName = UnderscoresToCamelCase(fieldDescriptor->name(), false);
+        if (fieldDescriptor->type() == FieldDescriptor::Type::TYPE_MESSAGE){
+            if (!fieldDescriptor->is_repeated())
+            {
+                printer->Print(" if($field_name$_ != null)$field_name$_.Recycle();\n", "field_name", fieldName);
+            }else{
+                printer->Print("    if($field_name$_ != null)\n"
+                       "        for(int i = 0; i < $field_name$_.Count; i++)\n"
+                       "        {\n"
+                       "            $field_name$_[i].Recycle();\n"
+                       "        }\n", "field_name", fieldName);
+            }
+        }
+    }
+    printer->Print("    ObjectPool.Release(this);\n");
+    printer->Print("}\n");
 
   GenerateCloningCode(printer);
   GenerateFreezingCode(printer);
