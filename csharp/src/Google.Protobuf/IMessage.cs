@@ -59,7 +59,7 @@ namespace Google.Protobuf
         /// </summary>
         /// <returns>The number of bytes required to write this message
         /// to a coded output stream.</returns>
-        int CalculateSize();
+        public int CalculateSize();
 
         /// <summary>
         /// Descriptor for this message. All instances are expected to return the same descriptor,
