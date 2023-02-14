@@ -272,14 +272,15 @@ std::string TryRemovePrefix(const std::string& prefix, const std::string& value)
 // For example, an enum called Color with a value of COLOR_BLUE should
 // result in an enum value in C# called just Blue
 std::string GetEnumValueName(const std::string& enum_name, const std::string& enum_value_name) {
-  std::string stripped = TryRemovePrefix(enum_name, enum_value_name);
-  std::string result = ShoutyToPascalCase(stripped);
-  // Just in case we have an enum name of FOO and a value of FOO_2... make sure the returned
-  // string is a valid identifier.
-  if (ascii_isdigit(result[0])) {
-    result = "_" + result;
-  }
-  return result;
+            return enum_value_name;
+//  std::string stripped = TryRemovePrefix(enum_name, enum_value_name);
+//  std::string result = ShoutyToPascalCase(stripped);
+//  // Just in case we have an enum name of FOO and a value of FOO_2... make sure the returned
+//  // string is a valid identifier.
+//  if (ascii_isdigit(result[0])) {
+//    result = "_" + result;
+//  }
+//  return result;
 }
 
 uint GetGroupEndTag(const Descriptor* descriptor) {
