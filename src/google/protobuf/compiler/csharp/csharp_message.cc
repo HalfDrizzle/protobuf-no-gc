@@ -208,7 +208,8 @@ void MessageGenerator::Generate(io::Printer* printer) {
         else if (fieldDescriptor->type() == FieldDescriptor::Type::TYPE_ENUM)
         {
             printer->Print(
-                    " $field_name$_ = $field_type$.$default_value$;\n", "field_type", GetClassName(fieldDescriptor->enum_type()), "field_name", fieldName, "default_value", fieldDescriptor->default_value_enum()->name());
+                    " $field_name$_ = $field_type$.$default_value$;\n", "field_type", GetClassName(fieldDescriptor->enum_type()), "field_name", fieldName, "default_value", GetEnumValueName(fieldDescriptor->default_value_enum()->type()->name(),
+                                                                                                                                                                                             fieldDescriptor->default_value_enum()->name()));
         }
         else if (fieldDescriptor->type() == FieldDescriptor::Type::TYPE_STRING)
         {
